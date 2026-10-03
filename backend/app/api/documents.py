@@ -14,6 +14,7 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "uploads"
 ALLOWED = {".pdf", ".docx", ".txt", ".md"}
+MAX_UPLOAD = 10 * 1024 * 1024  # 10MB
 
 
 def extract_text(path: Path, file_type: str) -> str:
@@ -63,7 +64,11 @@ def upload_document(
     user_dir.mkdir(parents=True, exist_ok=True)
     counter = len(list(user_dir.glob("*")))
     dest = user_dir / f"{current_user.id}_{counter}_{file.filename}"
-    dest.write_bytes(file.file.read())
+    # 限流读取：最多读 MAX_UPLOAD+1 字节，避免超大文件吃满内存
+    data = file.file.read(MAX_UPLOAD + 1)
+    if len(data) > MAX_UPLOAD:
+        raise HTTPException(status_code=413, detail="文件过大，最大支持 10MB")
+    dest.write_bytes(data)
 
     doc = CourseDocument(
         user_id=current_user.id,

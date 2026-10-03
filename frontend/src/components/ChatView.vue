@@ -96,14 +96,19 @@ async function removeConversation(id) {
   }
 }
 
-async function send() {
-  const text = input.value.trim()
+const SUGGESTIONS = [
+  '我明天有什么课？',
+  '我最近有什么作业要交？',
+  '我的 GPA 多少，哪门最弱？',
+  '帮我制定下周的学习计划',
+]
+
+async function doSend(text) {
   if (!text || busy.value) return
   error.value = ''
   messages.value.push({ role: 'user', content: text })
   const assistant = ref({ role: 'assistant', content: '', tools: [] })
   messages.value.push(assistant.value)
-  input.value = ''
   busy.value = true
 
   const updateTool = (name, patch) => {
@@ -144,6 +149,13 @@ async function send() {
   }
 }
 
+function send() {
+  const text = input.value.trim()
+  if (!text || busy.value) return
+  input.value = ''
+  doSend(text)
+}
+
 onMounted(() => {
   if (props.showHistory) loadConversations()
 })
@@ -181,12 +193,13 @@ onMounted(() => {
     <div class="main">
       <div class="list">
         <div v-if="!messages.length" class="empty">
-          <p>我是校园课程智能助手，可以帮你：</p>
-          <ul>
-            <li>查询课表：比如「我明天有什么课？」</li>
-            <li>资料问答：比如「数据结构实验要不要预习？」</li>
-            <li>制定计划：比如「帮我制定下周的学习计划」</li>
-          </ul>
+          <p class="hello">你好，我是校园课程智能助手</p>
+          <p class="sub">可以帮你查课表、盯作业、背卡片、答疑资料、做计划——点一个问题直接开始，或在下方输入</p>
+          <div class="suggestions">
+            <button v-for="s in SUGGESTIONS" :key="s" class="chip" @click="doSend(s)">
+              {{ s }}
+            </button>
+          </div>
         </div>
 
         <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
@@ -335,15 +348,40 @@ onMounted(() => {
   text-align: center;
 }
 
-.empty ul {
-  margin-top: 8px;
-  text-align: left;
-  list-style: none;
-  padding: 0;
+.empty .hello {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 6px;
 }
 
-.empty li {
-  margin: 4px 0;
+.empty .sub {
+  margin-bottom: 16px;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.suggestions .chip {
+  padding: 8px 16px;
+  border: 1px solid #91caff;
+  border-radius: 999px;
+  background: #fff;
+  color: #1890ff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.suggestions .chip:hover {
+  background: #e6f7ff;
+  box-shadow: 0 1px 6px rgba(24, 144, 255, 0.2);
 }
 
 .msg {
