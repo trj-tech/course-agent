@@ -138,7 +138,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="panel">
     <h2 class="page-title">课表管理</h2>
 
     <div class="bar">

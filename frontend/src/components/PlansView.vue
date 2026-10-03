@@ -17,7 +17,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
+  <div class="panel">
     <p v-if="error" class="error">{{ error }}</p>
     <h2>我的学习计划（{{ plans.length }}）</h2>
     <p class="tip">在聊天里让助手「制定学习计划」即可自动生成并保存</p>

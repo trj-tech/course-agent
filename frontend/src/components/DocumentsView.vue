@@ -40,7 +40,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div>
+  <div class="panel">
     <h2>课程资料</h2>
     <p class="tip">上传后自动切片并向量化，聊天时即可按资料作答（支持 pdf / docx / txt / md）</p>
 

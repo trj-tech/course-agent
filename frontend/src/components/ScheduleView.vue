@@ -18,7 +18,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
+  <div class="panel">
     <p v-if="error" class="error">{{ error }}</p>
     <h2>我的课表（{{ schedules.length }} 门）</h2>
     <table>

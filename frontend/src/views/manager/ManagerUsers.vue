@@ -89,7 +89,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div>
+  <div class="panel">
     <h2 class="page-title">用户管理</h2>
 
     <div class="bar">

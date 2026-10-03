@@ -228,14 +228,14 @@ onMounted(() => {
 <style scoped>
 .chat {
   display: flex;
-  height: calc(100vh - 210px);
+  height: calc(100vh - 140px);
   min-height: 460px;
   gap: 14px;
 }
 
 .chat:not(.withHistory) {
   display: block;
-  height: calc(100vh - 210px);
+  height: calc(100vh - 140px);
   min-height: 420px;
 }
 

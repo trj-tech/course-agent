@@ -89,7 +89,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div>
+  <div class="panel">
     <h2 class="page-title">文档管理</h2>
     <p class="tip">
       支持 txt / md / pdf / docx，与课程无关，同名不可重复，扫描版 PDF 可能抽不出文字；多个文档请逐个入库。

@@ -40,7 +40,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
+  <div class="panel">
     <h2>欢迎您：管理员</h2>
     <p class="sub">维护课程与知识库文档，利用课程助手验证检索与工具调用。</p>
 
