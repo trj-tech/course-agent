@@ -97,6 +97,14 @@ export function deletePlanItem(token, planId, itemId) {
   })
 }
 
+export function reviewFlashcard(token, id, result) {
+  return request(`/api/flashcards/${id}/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ result }),
+  })
+}
+
 export async function uploadDocument(token, file) {
   const form = new FormData()
   form.append('file', file)

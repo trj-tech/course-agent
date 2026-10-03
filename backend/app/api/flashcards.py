@@ -1,5 +1,6 @@
-"""AI 复习卡片：基于用户课程资料（RAG 切片）由 LLM 生成问答卡。"""
+"""AI 复习卡片：基于用户课程资料（RAG 切片）由 LLM 生成问答卡，带间隔重复复习。"""
 import json
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -13,6 +14,10 @@ from app.models.user import User
 from app.agent.engine import build_llm
 
 router = APIRouter(prefix="/flashcards", tags=["flashcards"])
+
+# 各记忆周期的复习间隔（天）：认识一次升一盒，遗忘回到盒 1
+INTERVALS = {1: 1, 2: 2, 3: 4, 4: 7, 5: 15, 6: 30}
+MASTER_BOX = 6  # 升到该盒视为「已掌握」
 
 GEN_PROMPT = """你是课程复习助手。请严格基于下面的课程资料片段，生成 {count} 张复习卡片。
 
@@ -31,6 +36,27 @@ GEN_PROMPT = """你是课程复习助手。请严格基于下面的课程资料�
 class GenerateIn(BaseModel):
     document_id: int | None = None  # 不传则用全部资料
     count: int = 5
+
+
+class ReviewIn(BaseModel):
+    result: str  # known / fuzzy / unknown
+
+
+def _card_dict(f: Flashcard, filename: str | None) -> dict:
+    today = date.today()
+    return {
+        "id": f.id,
+        "question": f.question,
+        "answer": f.answer,
+        "filename": filename,
+        "created_at": str(f.created_at),
+        "box": f.box,
+        "mastered": f.box >= MASTER_BOX,
+        "review_count": f.review_count,
+        "last_result": f.last_result,
+        "due_date": str(f.due_date) if f.due_date else None,
+        "is_due": bool(f.due_date and f.due_date <= today),
+    }
 
 
 def _extract_json(text: str) -> list[dict]:
@@ -97,14 +123,13 @@ def generate_flashcards(
             document_id=doc.id if doc else None,
             question=c["question"],
             answer=c["answer"],
+            box=1,
+            due_date=date.today(),  # 新卡当天即进入复习队列
         )
         db.add(f)
         saved.append(f)
     db.commit()
-    return [
-        {"id": f.id, "question": f.question, "answer": f.answer, "document_id": f.document_id}
-        for f in saved
-    ]
+    return [_card_dict(f, None) for f in saved]
 
 
 @router.get("")
@@ -119,16 +144,36 @@ def list_flashcards(
         .order_by(Flashcard.id.desc())
         .all()
     )
-    return [
-        {
-            "id": f.id,
-            "question": f.question,
-            "answer": f.answer,
-            "filename": fn,
-            "created_at": str(f.created_at),
-        }
-        for f, fn in rows
-    ]
+    return [_card_dict(f, fn) for f, fn in rows]
+
+
+@router.post("/{fid}/review")
+def review_flashcard(
+    fid: int,
+    payload: ReviewIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """复习打卡：known 升盒拉长间隔，fuzzy 保持明天再见，unknown 回盒 1 当天再见。"""
+    f = db.get(Flashcard, fid)
+    if f is None or f.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="卡片不存在")
+    if payload.result not in ("known", "fuzzy", "unknown"):
+        raise HTTPException(status_code=400, detail="result 仅支持 known / fuzzy / unknown")
+
+    today = date.today()
+    if payload.result == "known":
+        f.box = min(f.box + 1, MASTER_BOX)
+        f.due_date = today + timedelta(days=INTERVALS[f.box])
+    elif payload.result == "fuzzy":
+        f.due_date = today + timedelta(days=1)
+    else:
+        f.box = 1
+        f.due_date = today
+    f.review_count += 1
+    f.last_result = payload.result
+    db.commit()
+    return _card_dict(f, None)
 
 
 @router.delete("/{fid}")
