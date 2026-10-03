@@ -7,7 +7,7 @@ from pathlib import Path
 
 from app.core.security import hash_password
 from app.database import Base, SessionLocal, engine
-from app.models import Course, CourseDocument, Schedule, StudyPlan, User
+from app.models import Assignment, Course, CourseDocument, Schedule, Score, StudyPlan, User
 
 SAMPLE_DOC_PATH = (
     Path(__file__).resolve().parent.parent / "data" / "sample_docs" / "程序设计基础讲义.md"
@@ -44,6 +44,25 @@ SCHEDULES = {
         ("AI101", 5, 1, 2, 1, 16, "教学楼A105"),
     ],
 }
+
+
+# (user_key, course_code, title, description, 偏移天数, 时点, status)
+ASSIGNMENTS = [
+    ("student01", "CS201", "数据结构实验三：二叉树遍历", "实现二叉树的前序/中序/后序遍历并提交实验报告", 2, "23:59", "pending"),
+    ("student01", "MATH101", "高等数学第4章作业", "完成教材 P128 习题 4.3 第 1-10 题", 5, "23:59", "pending"),
+    ("student01", "CS101", "程序设计基础课程设计", "提交图书管理系统源码与设计文档", -1, "23:59", "pending"),
+    ("student02", "AI101", "人工智能导论文献综述", "阅读 3 篇大模型相关论文并撰写综述", 7, "23:59", "pending"),
+]
+
+# (user_key, course_code, score)
+SCORES = [
+    ("student01", "CS101", 92),
+    ("student01", "CS201", 85),
+    ("student01", "MATH101", 76),
+    ("student01", "ENG101", 88),
+    ("student02", "MATH101", 81),
+    ("student02", "CS101", 95),
+]
 
 
 def seed():
@@ -110,6 +129,26 @@ def seed():
                 file_type="md",
                 status="ready",
             ))
+
+        print("== 写入作业 ==")
+        from datetime import datetime, timedelta
+
+        for user_key, code, title, desc, offset_days, time_of_day, status in ASSIGNMENTS:
+            due = (datetime.now() + timedelta(days=offset_days)).replace(
+                hour=int(time_of_day[:2]), minute=0, second=0, microsecond=0
+            )
+            db.add(Assignment(
+                user_id=users[user_key].id,
+                course_id=course_map[code].id,
+                title=title,
+                description=desc,
+                due_at=due,
+                status=status,
+            ))
+
+        print("== 写入成绩 ==")
+        for user_key, code, score in SCORES:
+            db.add(Score(user_id=users[user_key].id, course_id=course_map[code].id, score=score))
 
         db.commit()
         print("== 模拟数据写入完成 ==")

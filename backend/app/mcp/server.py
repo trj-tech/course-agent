@@ -9,9 +9,11 @@ from mcp.server.fastmcp import FastMCP
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
+from app.models.assignment import Assignment
 from app.models.course import Course, Schedule
 from app.models.document import CourseDocument
 from app.models.plan import StudyPlan
+from app.models.score import Score, score_to_gpapoint
 from app.rag.retriever import retrieve
 
 mcp = FastMCP("course-agent")
@@ -80,6 +82,81 @@ def save_study_plan(user_id: int, title: str, goal: str, content: str) -> dict:
         db.commit()
         db.refresh(plan)
         return {"id": plan.id, "title": plan.title, "status": plan.status}
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def get_upcoming_assignments(user_id: int, days: int = 7) -> list[dict]:
+    """查询指定学生未来 N 天内截止（含已逾期未交）的作业，按截止时间升序返回。"""
+    from datetime import datetime, timedelta
+
+    db: Session = SessionLocal()
+    try:
+        now = datetime.now()
+        deadline = now + timedelta(days=days)
+        rows = (
+            db.query(Assignment, Course.name, Course.code)
+            .join(Course, Assignment.course_id == Course.id, isouter=True)
+            .filter(
+                Assignment.user_id == user_id,
+                Assignment.status == "pending",
+                Assignment.due_at <= deadline,
+            )
+            .order_by(Assignment.due_at)
+            .all()
+        )
+        return [
+            {
+                "id": a.id,
+                "title": a.title,
+                "description": a.description,
+                "course_name": cname,
+                "course_code": ccode,
+                "due_at": a.due_at.strftime("%Y-%m-%d %H:%M"),
+                "days_left": round((a.due_at - now).total_seconds() / 86400, 1),
+                "overdue": a.due_at < now,
+            }
+            for a, cname, ccode in rows
+        ]
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def get_my_scores(user_id: int) -> dict:
+    """查询指定学生的全部课程成绩，返回各科分数、绩点、总 GPA、平均分与最弱科目。"""
+    db: Session = SessionLocal()
+    try:
+        rows = (
+            db.query(Score, Course.name, Course.code, Course.credit)
+            .join(Course, Score.course_id == Course.id)
+            .filter(Score.user_id == user_id)
+            .all()
+        )
+        items = [
+            {
+                "course_name": name,
+                "course_code": code,
+                "credit": float(credit),
+                "score": s.score,
+                "gpapoint": score_to_gpapoint(s.score),
+            }
+            for s, name, code, credit in rows
+        ]
+        if not items:
+            return {"gpa": None, "average": None, "courses": []}
+
+        total_credit = sum(i["credit"] for i in items)
+        gpa = sum(i["gpapoint"] * i["credit"] for i in items) / total_credit
+        average = sum(i["score"] * i["credit"] for i in items) / total_credit
+        weakest = min(items, key=lambda i: i["score"])
+        return {
+            "gpa": round(gpa, 2),
+            "average": round(average, 1),
+            "weakest": {"course_name": weakest["course_name"], "score": weakest["score"]},
+            "courses": items,
+        }
     finally:
         db.close()
 

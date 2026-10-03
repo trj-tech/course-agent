@@ -13,10 +13,12 @@ from sqlalchemy.orm import Session
 from app.api.documents import extract_text
 from app.core.security import get_current_admin, hash_password
 from app.database import get_db
+from app.models.assignment import Assignment
 from app.models.conversation import AiConversation, AiMessage
 from app.models.course import Course, Schedule
 from app.models.document import CourseDocument, DocumentChunk
 from app.models.plan import StudyPlan
+from app.models.score import Score
 from app.models.user import User
 from app.rag.indexer import index_document
 
@@ -39,6 +41,8 @@ def stats(db: Session = Depends(get_db)):
         "plans": count(StudyPlan),
         "conversations": count(AiConversation),
         "messages": count(AiMessage),
+        "assignments": count(Assignment),
+        "scores": count(Score),
     }
 
 
@@ -412,3 +416,192 @@ def preview_document(did: int, db: Session = Depends(get_db)):
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"解析失败：{e}")
     return {"id": d.id, "filename": d.filename, "content": text[:2000]}
+
+
+# ---------- 作业 / DDL 管理 ----------
+
+class AssignmentIn(BaseModel):
+    username: str
+    course_code: str | None = None
+    title: str
+    description: str | None = None
+    due_at: str  # YYYY-MM-DDTHH:mm
+    status: str = "pending"
+
+
+@router.get("/assignments")
+def list_admin_assignments(
+    username: str = "",
+    status: str = "",
+    page: int = 1,
+    page_size: int = 15,
+    db: Session = Depends(get_db),
+):
+    q = (
+        db.query(Assignment, User.username, User.name, Course.name, Course.code)
+        .join(User, Assignment.user_id == User.id)
+        .join(Course, Assignment.course_id == Course.id, isouter=True)
+    )
+    if username:
+        q = q.filter(User.username.contains(username))
+    if status:
+        q = q.filter(Assignment.status == status)
+    total = q.count()
+    rows = q.order_by(Assignment.due_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "items": [
+            {
+                "id": a.id,
+                "title": a.title,
+                "description": a.description,
+                "due_at": str(a.due_at),
+                "status": a.status,
+                "username": uname,
+                "name": nname,
+                "course_name": cname,
+                "course_code": ccode,
+            }
+            for a, uname, nname, cname, ccode in rows
+        ],
+    }
+
+
+@router.post("/assignments")
+def create_assignment(payload: AssignmentIn, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == payload.username).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    course = None
+    if payload.course_code:
+        course = db.query(Course).filter(Course.code == payload.course_code).first()
+        if course is None:
+            raise HTTPException(status_code=404, detail="课程不存在")
+    try:
+        from datetime import datetime
+
+        due = datetime.fromisoformat(payload.due_at)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="截止时间格式应为 YYYY-MM-DDTHH:mm")
+    a = Assignment(
+        user_id=user.id,
+        course_id=course.id if course else None,
+        title=payload.title,
+        description=payload.description,
+        due_at=due,
+        status=payload.status,
+    )
+    db.add(a)
+    db.commit()
+    db.refresh(a)
+    return {"id": a.id}
+
+
+@router.put("/assignments/{aid}")
+def update_assignment(aid: int, payload: AssignmentIn, db: Session = Depends(get_db)):
+    a = db.get(Assignment, aid)
+    if a is None:
+        raise HTTPException(status_code=404, detail="作业不存在")
+    if payload.status not in ("pending", "done"):
+        raise HTTPException(status_code=400, detail="status 仅支持 pending / done")
+    user = db.query(User).filter(User.username == payload.username).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    course = None
+    if payload.course_code:
+        course = db.query(Course).filter(Course.code == payload.course_code).first()
+        if course is None:
+            raise HTTPException(status_code=404, detail="课程不存在")
+    try:
+        from datetime import datetime
+
+        due = datetime.fromisoformat(payload.due_at)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="截止时间格式应为 YYYY-MM-DDTHH:mm")
+    a.user_id = user.id
+    a.course_id = course.id if course else None
+    a.title = payload.title
+    a.description = payload.description
+    a.due_at = due
+    a.status = payload.status
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/assignments/{aid}")
+def delete_assignment(aid: int, db: Session = Depends(get_db)):
+    a = db.get(Assignment, aid)
+    if a is None:
+        raise HTTPException(status_code=404, detail="作业不存在")
+    db.delete(a)
+    db.commit()
+    return {"ok": True}
+
+
+# ---------- 成绩管理 ----------
+
+class ScoreIn(BaseModel):
+    username: str
+    course_code: str
+    score: float
+
+
+@router.get("/scores")
+def list_admin_scores(username: str = "", db: Session = Depends(get_db)):
+    q = (
+        db.query(Score, User.username, User.name, Course.name, Course.code)
+        .join(User, Score.user_id == User.id)
+        .join(Course, Score.course_id == Course.id)
+    )
+    if username:
+        q = q.filter(User.username.contains(username))
+    rows = q.order_by(Score.id.desc()).all()
+    return [
+        {
+            "id": s.id,
+            "score": s.score,
+            "username": uname,
+            "name": nname,
+            "course_name": cname,
+            "course_code": ccode,
+        }
+        for s, uname, nname, cname, ccode in rows
+    ]
+
+
+@router.post("/scores")
+def create_score(payload: ScoreIn, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == payload.username).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    course = db.query(Course).filter(Course.code == payload.course_code).first()
+    if course is None:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    if not (0 <= payload.score <= 100):
+        raise HTTPException(status_code=400, detail="成绩需在 0-100 之间")
+    dup = (
+        db.query(Score)
+        .filter(Score.user_id == user.id, Score.course_id == course.id)
+        .first()
+    )
+    if dup:
+        dup.score = payload.score  # 已有成绩则覆盖
+        db.commit()
+        return {"id": dup.id, "updated": True}
+    s = Score(user_id=user.id, course_id=course.id, score=payload.score)
+    db.add(s)
+    db.commit()
+    db.refresh(s)
+    return {"id": s.id}
+
+
+@router.delete("/scores/{sid}")
+def delete_score(sid: int, db: Session = Depends(get_db)):
+    s = db.get(Score, sid)
+    if s is None:
+        raise HTTPException(status_code=404, detail="成绩不存在")
+    db.delete(s)
+    db.commit()
+    return {"ok": True}
