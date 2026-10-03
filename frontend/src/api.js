@@ -55,6 +55,10 @@ export function fetchPlans(token) {
   return request('/api/plans', { headers: { Authorization: `Bearer ${token}` } })
 }
 
+export function fetchPlan(token, id) {
+  return request(`/api/plans/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+}
+
 export function updatePlan(token, id, payload) {
   return request(`/api/plans/${id}`, {
     method: 'PUT',
@@ -65,6 +69,29 @@ export function updatePlan(token, id, payload) {
 
 export function deletePlan(token, id) {
   return request(`/api/plans/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+export function addPlanItem(token, planId, title) {
+  return request(`/api/plans/${planId}/items`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ title }),
+  })
+}
+
+export function togglePlanItem(token, planId, itemId, isDone) {
+  return request(`/api/plans/${planId}/items/${itemId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ is_done: isDone }),
+  })
+}
+
+export function deletePlanItem(token, planId, itemId) {
+  return request(`/api/plans/${planId}/items/${itemId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   })

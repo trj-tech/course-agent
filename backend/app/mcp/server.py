@@ -12,7 +12,7 @@ from app.database import SessionLocal
 from app.models.assignment import Assignment
 from app.models.course import Course, Schedule
 from app.models.document import CourseDocument
-from app.models.plan import StudyPlan
+from app.models.plan import StudyPlan, StudyPlanItem
 from app.models.score import Score, score_to_gpapoint
 from app.rag.retriever import retrieve
 
@@ -73,15 +73,27 @@ def list_my_documents(user_id: int) -> list[dict]:
 
 
 @mcp.tool()
-def save_study_plan(user_id: int, title: str, goal: str, content: str) -> dict:
-    """为指定学生保存一份学习计划并落库，返回计划 id。"""
+def save_study_plan(user_id: int, title: str, goal: str, content: str, items: list[str] | None = None) -> dict:
+    """为指定学生保存学习计划并落库，返回计划 id 与条目数。
+
+    content 为计划全文（Markdown）；items 为拆解后的具体任务条目列表（按执行顺序，
+    每条一句话、可勾选完成），学生端会以 checklist 形式展示并统计进度。
+    """
     db: Session = SessionLocal()
     try:
         plan = StudyPlan(user_id=user_id, title=title, goal=goal, content=content, status="active")
         db.add(plan)
         db.commit()
         db.refresh(plan)
-        return {"id": plan.id, "title": plan.title, "status": plan.status}
+        n_items = 0
+        for i, t in enumerate(items or []):
+            t = (t or "").strip()
+            if not t:
+                continue
+            db.add(StudyPlanItem(plan_id=plan.id, item_order=i, title=t[:200]))
+            n_items += 1
+        db.commit()
+        return {"id": plan.id, "title": plan.title, "status": plan.status, "items": n_items}
     finally:
         db.close()
 

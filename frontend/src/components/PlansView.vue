@@ -3,7 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
-import { deletePlan, fetchPlans, updatePlan } from '../api'
+import { addPlanItem, deletePlan, deletePlanItem, fetchPlan, fetchPlans, togglePlanItem, updatePlan } from '../api'
 
 const props = defineProps({ token: { type: String, required: true } })
 
@@ -13,6 +13,8 @@ const detailVisible = ref(false)
 const editVisible = ref(false)
 const current = ref(null)
 const form = reactive({ title: '', goal: '', content: '', status: 'active' })
+const newItem = ref('')
+const itemsLoading = ref(false)
 
 const STATUS_LABEL = { active: '进行中', done: '已完成' }
 
@@ -29,8 +31,70 @@ async function load() {
 }
 
 function openDetail(p) {
-  current.value = p
+  current.value = { ...p, items: p.items || [] }
   detailVisible.value = true
+  if (!p.items) loadItems()
+}
+
+async function loadItems() {
+  itemsLoading.value = true
+  try {
+    const detail = await fetchPlan(props.token, current.value.id)
+    current.value = detail
+    syncProgress(current.value)
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    itemsLoading.value = false
+  }
+}
+
+function syncProgress(detail) {
+  const inList = plans.value.find((p) => p.id === detail.id)
+  if (inList) inList.progress = detail.progress
+}
+
+async function onToggleItem(item) {
+  try {
+    await togglePlanItem(props.token, current.value.id, item.id, item.is_done)
+    const done = current.value.items.filter((i) => i.is_done).length
+    current.value.progress = { done, total: current.value.items.length }
+    syncProgress(current.value)
+  } catch (e) {
+    item.is_done = !item.is_done
+    ElMessage.error(e.message)
+  }
+}
+
+async function onAddItem() {
+  const title = newItem.value.trim()
+  if (!title) return
+  try {
+    const it = await addPlanItem(props.token, current.value.id, title)
+    current.value.items.push(it)
+    current.value.progress = {
+      done: current.value.items.filter((i) => i.is_done).length,
+      total: current.value.items.length,
+    }
+    syncProgress(current.value)
+    newItem.value = ''
+  } catch (e) {
+    ElMessage.error(e.message)
+  }
+}
+
+async function onRemoveItem(item) {
+  try {
+    await deletePlanItem(props.token, current.value.id, item.id)
+    current.value.items = current.value.items.filter((i) => i.id !== item.id)
+    current.value.progress = {
+      done: current.value.items.filter((i) => i.is_done).length,
+      total: current.value.items.length,
+    }
+    syncProgress(current.value)
+  } catch (e) {
+    ElMessage.error(e.message)
+  }
 }
 
 function openEdit() {
@@ -90,6 +154,14 @@ onMounted(load)
           <span class="status" :class="p.status">{{ STATUS_LABEL[p.status] || p.status }}</span>
         </div>
         <p v-if="p.goal" class="goal">目标：{{ p.goal }}</p>
+        <div v-if="p.progress?.total" class="card-progress">
+          <el-progress
+            :percentage="Math.round((p.progress.done / p.progress.total) * 100)"
+            :stroke-width="6"
+            :show-text="false"
+          />
+          <span class="card-progress-text">{{ p.progress.done }}/{{ p.progress.total }} 条完成</span>
+        </div>
         <p class="time">{{ p.created_at }}</p>
       </div>
       <div v-if="!plans.length" class="empty">还没有学习计划</div>
@@ -105,6 +177,39 @@ onMounted(load)
           <span class="detail-time">{{ current.created_at }}</span>
         </div>
         <p v-if="current.goal" class="detail-goal">目标：{{ current.goal }}</p>
+
+        <div v-loading="itemsLoading" class="items-box">
+          <div class="items-head">
+            <strong>任务清单</strong>
+            <span v-if="current.progress?.total" class="items-count">
+              已完成 {{ current.progress.done }}/{{ current.progress.total }}
+            </span>
+          </div>
+          <el-progress
+            v-if="current.progress?.total"
+            :percentage="Math.round((current.progress.done / current.progress.total) * 100)"
+            :stroke-width="8"
+          />
+          <div v-if="current.items?.length" class="item-list">
+            <div v-for="it in current.items" :key="it.id" class="item-row">
+              <el-checkbox :model-value="it.is_done" @change="onToggleItem(it)">
+                <span :class="{ done: it.is_done }">{{ it.title }}</span>
+              </el-checkbox>
+              <el-button link type="danger" size="small" @click="onRemoveItem(it)">移除</el-button>
+            </div>
+          </div>
+          <p v-else class="items-empty">暂无任务条目，可在下方手动添加</p>
+          <div class="item-add">
+            <el-input
+              v-model="newItem"
+              size="small"
+              placeholder="添加新任务，如：完成第4章课后习题"
+              @keyup.enter="onAddItem"
+            />
+            <el-button size="small" type="primary" plain @click="onAddItem">添加</el-button>
+          </div>
+        </div>
+
         <div class="detail-content md-body" v-html="renderMd(current.content)"></div>
       </template>
       <template #footer>
@@ -203,6 +308,76 @@ h2 {
   color: #374151;
   font-size: 14px;
   margin: 8px 0 4px;
+}
+
+.card-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 2px;
+}
+
+.card-progress :deep(.el-progress) {
+  flex: 1;
+}
+
+.card-progress-text {
+  color: #6b7280;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.items-box {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: #f9fafb;
+}
+
+.items-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.items-count {
+  color: #1890ff;
+  font-size: 13px;
+}
+
+.item-list {
+  margin: 8px 0;
+}
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px dashed #f0f0f0;
+}
+
+.item-row:last-child {
+  border-bottom: none;
+}
+
+.item-row :deep(.done) {
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+
+.items-empty {
+  color: #9ca3af;
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.item-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .time {
