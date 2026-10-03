@@ -3,10 +3,14 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import settings
 
-# SQLite 需要 check_same_thread=False 以支持 FastAPI 多线程访问
+_is_sqlite = settings.database_url.startswith("sqlite")
+# SQLite 需要 check_same_thread=False 以支持 FastAPI 多线程访问；
+# MySQL 使用 pool_pre_ping 避免连接失效，pool_recycle 防止 wait_timeout 断连
 engine = create_engine(
     settings.database_url,
-    connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {},
+    connect_args={"check_same_thread": False} if _is_sqlite else {},
+    pool_pre_ping=not _is_sqlite,
+    pool_recycle=3600 if not _is_sqlite else -1,
 )
 
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
