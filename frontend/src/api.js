@@ -55,6 +55,21 @@ export function fetchPlans(token) {
   return request('/api/plans', { headers: { Authorization: `Bearer ${token}` } })
 }
 
+export function updatePlan(token, id, payload) {
+  return request(`/api/plans/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deletePlan(token, id) {
+  return request(`/api/plans/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
 export async function uploadDocument(token, file) {
   const form = new FormData()
   form.append('file', file)
