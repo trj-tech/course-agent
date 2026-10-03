@@ -2,6 +2,16 @@
 
 基于 **AI Agent + MCP + RAG** 的全栈校园课程助手：学生通过自然语言与 Agent 对话，即可查询课表、检索个人课程资料、管理作业/成绩/学习计划；教师通过管理后台维护全部数据。前后端分离，工具层基于 MCP 协议与 Agent 解耦。
 
+## 项目预览
+
+| 课程助手（SSE 流式 + 工具调用卡片 + 表格渲染） | 我的课表 |
+| --- | --- |
+| ![课程助手](docs/screenshots/01-chat.png) | ![我的课表](docs/screenshots/02-schedule.png) |
+| **学习计划**（AI 拆解任务 + 进度打卡） | **复习卡片**（RAG 生成 + SRS 间隔重复） |
+| ![学习计划](docs/screenshots/03-plans.png) | ![复习卡片](docs/screenshots/04-flashcards.png) |
+| **学习数据仪表盘** | **管理后台** |
+| ![仪表盘](docs/screenshots/05-dashboard.png) | ![管理后台](docs/screenshots/06-manager-home.png) |
+
 ## 架构
 
 ```mermaid
