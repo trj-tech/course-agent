@@ -32,6 +32,7 @@ function fromHistory(m) {
     })),
     sources: m.retrieval_sources || null,
     latency_ms: m.latency_ms,
+    first_token_ms: m.first_token_ms,
   }
 }
 
@@ -119,6 +120,8 @@ async function send() {
           error.value = ev.message
           break
         case 'done':
+          assistant.value.latency_ms = ev.latency_ms
+          assistant.value.first_token_ms = ev.first_token_ms
           if (ev.conversation_id && currentConvId.value !== ev.conversation_id) {
             currentConvId.value = ev.conversation_id
             if (props.showHistory) loadConversations()
@@ -200,7 +203,9 @@ onMounted(() => {
               </div>
               <div v-if="m.content" class="answer">{{ m.content }}</div>
               <div v-else-if="m.tools.length" class="thinking">正在组织回答…</div>
-              <div v-if="m.latency_ms" class="latency">耗时 {{ m.latency_ms }} ms</div>
+              <div v-if="m.latency_ms" class="latency">
+                <template v-if="m.first_token_ms">首字 {{ (m.first_token_ms / 1000).toFixed(1) }} 秒 · </template>总耗时 {{ (m.latency_ms / 1000).toFixed(1) }} 秒
+              </div>
             </template>
           </div>
         </div>

@@ -64,7 +64,8 @@ def _extract_sources(raw) -> list | None:
 @router.post("")
 async def chat(payload: ChatRequest, current_user: User = Depends(get_current_user)):
     async def gen():
-        started_at = time.time()
+        started_at = time.perf_counter()
+        first_token_ms = None  # 第一个字输出时的耗时
         # 提前校验 Key 配置，失败直接返回错误事件
         try:
             build_llm()
@@ -144,11 +145,13 @@ async def chat(payload: ChatRequest, current_user: User = Depends(get_current_us
                     chunk = event["data"].get("chunk")
                     content = chunk.content if chunk else None
                     if isinstance(content, str) and content:
+                        if first_token_ms is None:
+                            first_token_ms = int((time.perf_counter() - started_at) * 1000)
                         collected_text.append(content)
                         yield _sse({"type": "text", "delta": content})
 
             answer = "".join(collected_text)
-            latency = int((time.time() - started_at) * 1000)
+            latency = int((time.perf_counter() - started_at) * 1000)
             # 保存对话历史
             db.add(AiMessage(conversation_id=conversation.id, role="user", content=payload.message))
             db.add(
@@ -161,10 +164,18 @@ async def chat(payload: ChatRequest, current_user: User = Depends(get_current_us
                         json.dumps(retrieval_sources, ensure_ascii=False) if retrieval_sources else None
                     ),
                     latency_ms=latency,
+                    first_token_ms=first_token_ms,
                 )
             )
             db.commit()
-            yield _sse({"type": "done", "conversation_id": conversation.id})
+            yield _sse(
+                {
+                    "type": "done",
+                    "conversation_id": conversation.id,
+                    "latency_ms": latency,
+                    "first_token_ms": first_token_ms,
+                }
+            )
         except Exception as e:  # noqa: BLE001
             yield _sse({"type": "error", "message": f"服务异常：{e}"})
         finally:

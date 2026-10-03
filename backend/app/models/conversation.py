@@ -30,5 +30,6 @@ class AiMessage(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     tool_calls: Mapped[str | None] = mapped_column(Text)  # JSON: [{name, input, output}]
     retrieval_sources: Mapped[str | None] = mapped_column(Text)  # JSON: [{filename, score, ...}]
-    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    latency_ms: Mapped[int | None] = mapped_column(Integer)  # 总耗时（请求开始到流式结束）
+    first_token_ms: Mapped[int | None] = mapped_column(Integer)  # 首字耗时（到第一个字输出）
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
