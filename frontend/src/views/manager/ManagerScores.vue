@@ -11,6 +11,7 @@ const loading = ref(false)
 const users = ref([])
 const courses = ref([])
 const dialogVisible = ref(false)
+const editing = ref(false)
 const form = ref({ username: '', course_code: '', score: null })
 
 async function load() {
@@ -38,7 +39,14 @@ async function loadOptions() {
 }
 
 function openCreate() {
+  editing.value = false
   form.value = { username: '', course_code: '', score: null }
+  dialogVisible.value = true
+}
+
+function openEdit(row) {
+  editing.value = true
+  form.value = { username: row.username, course_code: row.course_code, score: row.score }
   dialogVisible.value = true
 }
 
@@ -49,7 +57,7 @@ async function save() {
   }
   try {
     await createAdminScore(token, { ...form.value })
-    ElMessage.success('已保存（同一课程重复录入会覆盖原成绩）')
+    ElMessage.success(editing.value ? '成绩已更新' : '已保存（同一课程重复录入会覆盖原成绩）')
     dialogVisible.value = false
     await load()
   } catch (e) {
@@ -106,22 +114,23 @@ onMounted(() => {
           <span :class="{ high: row.score >= 90, low: row.score < 80 }">{{ row.score }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="100" fixed="right">
+      <el-table-column label="操作" width="150" fixed="right">
         <template #default="{ row }">
+          <el-button size="small" type="primary" plain @click="openEdit(row)">编辑</el-button>
           <el-button size="small" type="danger" plain @click="onDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" title="录入成绩" width="440px">
+    <el-dialog v-model="dialogVisible" :title="editing ? '修改成绩' : '录入成绩'" width="440px">
       <el-form :model="form" label-width="80px">
         <el-form-item label="学生" required>
-          <el-select v-model="form.username" filterable style="width: 100%">
+          <el-select v-model="form.username" filterable :disabled="editing" style="width: 100%">
             <el-option v-for="u in users" :key="u.id" :label="`${u.name}（${u.username}）`" :value="u.username" />
           </el-select>
         </el-form-item>
         <el-form-item label="课程" required>
-          <el-select v-model="form.course_code" filterable style="width: 100%">
+          <el-select v-model="form.course_code" filterable :disabled="editing" style="width: 100%">
             <el-option v-for="c in courses" :key="c.id" :label="`${c.name}（${c.code}）`" :value="c.code" />
           </el-select>
         </el-form-item>
