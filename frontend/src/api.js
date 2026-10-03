@@ -21,6 +21,8 @@ async function request(path, options = {}) {
   return res.json()
 }
 
+// ---------- 认证 ----------
+
 export function login(username, password) {
   return request('/api/auth/login', {
     method: 'POST',
@@ -28,9 +30,18 @@ export function login(username, password) {
   })
 }
 
+export function register(payload) {
+  return request('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
 export function fetchMe(token) {
   return request('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
 }
+
+// ---------- 学生端 ----------
 
 export function fetchMySchedule(token) {
   return request('/api/schedules/me', { headers: { Authorization: `Bearer ${token}` } })
@@ -64,15 +75,167 @@ export async function uploadDocument(token, file) {
   return res.json()
 }
 
+// ---------- 对话历史 ----------
+
+export function fetchConversations(token) {
+  return request('/api/conversations', { headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function createConversation(token, title = '新对话') {
+  return request('/api/conversations', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ title }),
+  })
+}
+
+export function fetchConversation(token, id) {
+  return request(`/api/conversations/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function deleteConversation(token, id) {
+  return request(`/api/conversations/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+// ---------- 管理端 ----------
+
+function adminHeaders(token) {
+  return { Authorization: `Bearer ${token}` }
+}
+
+export function fetchAdminStats(token) {
+  return request('/api/admin/stats', { headers: adminHeaders(token) })
+}
+
+export function fetchAdminCourses(token, keyword = '') {
+  return request(`/api/admin/courses?keyword=${encodeURIComponent(keyword)}`, {
+    headers: adminHeaders(token),
+  })
+}
+
+export function createAdminCourse(token, data) {
+  return request('/api/admin/courses', {
+    method: 'POST',
+    headers: adminHeaders(token),
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateAdminCourse(token, id, data) {
+  return request(`/api/admin/courses/${id}`, {
+    method: 'PUT',
+    headers: adminHeaders(token),
+    body: JSON.stringify(data),
+  })
+}
+
+export function deleteAdminCourse(token, id) {
+  return request(`/api/admin/courses/${id}`, {
+    method: 'DELETE',
+    headers: adminHeaders(token),
+  })
+}
+
+export function fetchAdminSchedules(token, params = {}) {
+  const qs = new URLSearchParams()
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== '' && v !== null && v !== undefined) qs.set(k, v)
+  })
+  return request(`/api/admin/schedules?${qs.toString()}`, { headers: adminHeaders(token) })
+}
+
+export function createAdminSchedule(token, data) {
+  return request('/api/admin/schedules', {
+    method: 'POST',
+    headers: adminHeaders(token),
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateAdminSchedule(token, id, data) {
+  return request(`/api/admin/schedules/${id}`, {
+    method: 'PUT',
+    headers: adminHeaders(token),
+    body: JSON.stringify(data),
+  })
+}
+
+export function deleteAdminSchedule(token, id) {
+  return request(`/api/admin/schedules/${id}`, {
+    method: 'DELETE',
+    headers: adminHeaders(token),
+  })
+}
+
+export function fetchAdminUsers(token, params = {}) {
+  const qs = new URLSearchParams()
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== '' && v !== null && v !== undefined) qs.set(k, v)
+  })
+  return request(`/api/admin/users?${qs.toString()}`, { headers: adminHeaders(token) })
+}
+
+export function createAdminUser(token, data) {
+  return request('/api/admin/users', {
+    method: 'POST',
+    headers: adminHeaders(token),
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateAdminUser(token, id, data) {
+  return request(`/api/admin/users/${id}`, {
+    method: 'PUT',
+    headers: adminHeaders(token),
+    body: JSON.stringify(data),
+  })
+}
+
+export function deleteAdminUser(token, id) {
+  return request(`/api/admin/users/${id}`, {
+    method: 'DELETE',
+    headers: adminHeaders(token),
+  })
+}
+
+export function fetchAdminDocuments(token, params = {}) {
+  const qs = new URLSearchParams()
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== '' && v !== null && v !== undefined) qs.set(k, v)
+  })
+  return request(`/api/admin/documents?${qs.toString()}`, { headers: adminHeaders(token) })
+}
+
+export function deleteAdminDocument(token, id) {
+  return request(`/api/admin/documents/${id}`, {
+    method: 'DELETE',
+    headers: adminHeaders(token),
+  })
+}
+
+export function reindexAdminDocument(token, id) {
+  return request(`/api/admin/documents/${id}/reindex`, {
+    method: 'POST',
+    headers: adminHeaders(token),
+  })
+}
+
+export function previewAdminDocument(token, id) {
+  return request(`/api/admin/documents/${id}/preview`, { headers: adminHeaders(token) })
+}
+
 /** 流式聊天：POST /api/chat 并以 SSE 方式读取，逐条回调 onEvent({type,...}) */
-export async function chatStream(message, token, onEvent) {
+export async function chatStream(message, token, onEvent, conversationId = null) {
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, conversation_id: conversationId }),
   })
   if (!res.ok || !res.body) {
     throw new Error(`请求失败（${res.status}）`)
