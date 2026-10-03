@@ -54,14 +54,16 @@ function syncProgress(detail) {
   if (inList) inList.progress = detail.progress
 }
 
-async function onToggleItem(item) {
+async function onToggleItem(item, val) {
+  const old = item.is_done
+  item.is_done = val
   try {
-    await togglePlanItem(props.token, current.value.id, item.id, item.is_done)
+    await togglePlanItem(props.token, current.value.id, item.id, val)
     const done = current.value.items.filter((i) => i.is_done).length
     current.value.progress = { done, total: current.value.items.length }
     syncProgress(current.value)
   } catch (e) {
-    item.is_done = !item.is_done
+    item.is_done = old
     ElMessage.error(e.message)
   }
 }
@@ -192,7 +194,7 @@ onMounted(load)
           />
           <div v-if="current.items?.length" class="item-list">
             <div v-for="it in current.items" :key="it.id" class="item-row">
-              <el-checkbox :model-value="it.is_done" @change="onToggleItem(it)">
+              <el-checkbox :model-value="it.is_done" @change="(v) => onToggleItem(it, v)">
                 <span :class="{ done: it.is_done }">{{ it.title }}</span>
               </el-checkbox>
               <el-button link type="danger" size="small" @click="onRemoveItem(it)">移除</el-button>
