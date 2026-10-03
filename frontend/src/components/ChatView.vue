@@ -28,13 +28,19 @@ function fromHistory(m) {
     content: m.content,
     tools: (m.tool_calls || []).map((t) => ({
       name: t.name,
-      input: t.input,
-      output: t.output,
       status: '完成',
     })),
     sources: m.retrieval_sources || null,
     latency_ms: m.latency_ms,
   }
+}
+
+// 工具名映射为中文，卡片只显示名称与状态，不展示原始 JSON
+const TOOL_LABELS = {
+  get_my_schedule: '查询课表',
+  search_course_documents: '检索课程资料',
+  list_my_documents: '查询课程资料列表',
+  save_study_plan: '保存学习计划',
 }
 
 async function loadConversations() {
@@ -101,15 +107,10 @@ async function send() {
     await chatStream(text, props.token, (ev) => {
       switch (ev.type) {
         case 'tool_start':
-          assistant.value.tools.push({
-            name: ev.name,
-            input: JSON.stringify(ev.input ?? {}),
-            output: '',
-            status: '运行中',
-          })
+          assistant.value.tools.push({ name: ev.name, status: '运行中' })
           break
         case 'tool_end':
-          updateTool(ev.name, { output: String(ev.output ?? ''), status: '完成' })
+          updateTool(ev.name, { status: '完成' })
           break
         case 'text':
           assistant.value.content += ev.delta
@@ -182,14 +183,12 @@ onMounted(() => {
           <div class="bubble">
             <template v-if="m.role === 'user'">{{ m.content }}</template>
             <template v-else>
-              <!-- 工具调用过程卡片 -->
+              <!-- 工具调用过程卡片（只显示中文名称与状态） -->
               <div v-for="(t, ti) in m.tools" :key="ti" class="tool">
                 <div class="tool-head">
-                  <span class="tool-name">🔧 {{ t.name }}</span>
+                  <span class="tool-name">🔧 {{ TOOL_LABELS[t.name] || t.name }}</span>
                   <span class="tool-status" :class="t.status === '完成' ? 'ok' : 'run'">{{ t.status }}</span>
                 </div>
-                <div class="tool-input">{{ t.input }}</div>
-                <div v-if="t.output" class="tool-output">{{ t.output }}</div>
               </div>
               <!-- 检索溯源 -->
               <div v-if="m.sources && m.sources.length" class="sources">
@@ -390,15 +389,6 @@ onMounted(() => {
 
 .tool-status.run {
   color: #2563eb;
-}
-
-.tool-input,
-.tool-output {
-  margin-top: 4px;
-  color: #64748b;
-  word-break: break-all;
-  max-height: 120px;
-  overflow: hidden;
 }
 
 .sources {
