@@ -63,20 +63,23 @@ flowchart LR
 
 ### 方式一：Docker Compose 一键启动（推荐）
 
-环境要求：Docker + DeepSeek API Key
+环境要求：Docker + 本机 MySQL 8 + DeepSeek API Key
 
 ```bash
 # 1. 项目根目录创建 .env，写入 API Key
 echo DEEPSEEK_API_KEY=sk-xxx > .env
 
-# 2. 一键构建并启动 MySQL + 后端 + 前端
+# 2. 本机 MySQL 建库并创建容器访问账号
+mysql -uroot -p -e "CREATE DATABASE IF NOT EXISTS course_agent CHARACTER SET utf8mb4; CREATE USER IF NOT EXISTS 'course'@'%' IDENTIFIED BY '123456'; GRANT ALL PRIVILEGES ON course_agent.* TO 'course'@'%'; FLUSH PRIVILEGES;"
+
+# 3. 一键构建并启动后端 + 前端（通过 host.docker.internal 复用本机 MySQL）
 docker compose up -d --build
 
-# 3.（可选）写入演示数据
+# 4.（可选）写入演示数据
 docker compose exec backend python -m app.seed
 ```
 
-访问 http://localhost:5173 即可。数据持久化在 `mysql-data` 与 `uploads` 两个 volume 中，`docker compose down` 不丢数据（加 `-v` 才会清空）。
+访问 http://localhost:5173 即可。容器后端与本地开发共用本机同一个 `course_agent` 库（数据互通，Navicat 直连可见），上传文件持久化在 `uploads` volume 中。
 
 ### 方式二：本地开发
 

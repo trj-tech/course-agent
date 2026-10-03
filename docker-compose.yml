@@ -1,36 +1,22 @@
-# 一键启动全栈：MySQL 8 + FastAPI 后端 + nginx 前端
+# 一键启动全栈：FastAPI 后端 + nginx 前端（复用宿主机已有的 MySQL）
 # 用法：
 #   1. 在本文件同目录创建 .env，写入 DEEPSEEK_API_KEY=sk-xxx
-#   2. docker compose up -d --build
-#   3. 首次运行可执行演示数据：docker compose exec backend python -m app.seed
+#   2. 确保本机 MySQL 已运行，且已建库 course_agent 与用户 course（见 README）
+#   3. docker compose up -d --build
 #   4. 访问 http://localhost:5173
 services:
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: course_agent
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-    volumes:
-      - mysql-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot123"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: mysql+pymysql://root:root123@mysql:3306/course_agent?charset=utf8mb4
+      # host.docker.internal = 宿主机；容器后端直接使用本机 MySQL，与本地开发共用同一份数据
+      DATABASE_URL: mysql+pymysql://course:123456@host.docker.internal:3306/course_agent?charset=utf8mb4
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       SEMESTER_START: ${SEMESTER_START:-2026-09-07}
     volumes:
       - uploads:/app/data/uploads   # 上传的课程资料持久化
-    depends_on:
-      mysql:
-        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
     build: ./frontend
@@ -40,5 +26,4 @@ services:
       - backend
 
 volumes:
-  mysql-data:
   uploads:
