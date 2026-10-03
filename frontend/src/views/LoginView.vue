@@ -14,6 +14,7 @@ const error = ref('')
 const loading = ref(false)
 
 async function goHome(user) {
+  localStorage.setItem('role', user.role)
   if (user.role === 'admin') {
     router.push('/manager')
   } else {
@@ -60,9 +61,11 @@ onMounted(async () => {
   if (!token) return
   try {
     const user = await fetchMe(token)
+    localStorage.setItem('role', user.role)
     await goHome(user)
   } catch {
     localStorage.removeItem('token')
+    localStorage.removeItem('role')
   }
 })
 </script>

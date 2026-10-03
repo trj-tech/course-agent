@@ -55,7 +55,7 @@ async function loadOptions() {
       fetchAdminUsers(token, { page_size: 1000 }),
       fetchAdminCourses(token),
     ])
-    users.value = u.items
+    users.value = u.items.filter((x) => x.role === 'student')
     courses.value = c
   } catch (e) {
     ElMessage.error(e.message)

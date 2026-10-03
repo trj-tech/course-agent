@@ -56,10 +56,17 @@ const router = createRouter({
   ],
 })
 
-// 简单登录守卫：未登录一律去登录页
+// 登录守卫：未登录一律去登录页；管理员与学生各归其位
 router.beforeEach((to) => {
   const token = localStorage.getItem('token')
   if (!token && to.path !== '/login') return '/login'
+  const role = localStorage.getItem('role')
+  if (role === 'admin') {
+    // 管理员没有学生端（无课表/成绩等学生数据）
+    if (to.path !== '/login' && !to.path.startsWith('/manager')) return '/manager/home'
+  } else if (to.path.startsWith('/manager')) {
+    return '/'
+  }
   return true
 })
 

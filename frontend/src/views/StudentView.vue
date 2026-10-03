@@ -31,6 +31,7 @@ const MENUS = [
 
 function handleLogout() {
   localStorage.removeItem('token')
+  localStorage.removeItem('role')
   router.push('/login')
 }
 

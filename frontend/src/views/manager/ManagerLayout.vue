@@ -36,6 +36,7 @@ function handleSelect(index) {
 
 function handleLogout() {
   localStorage.removeItem('token')
+  localStorage.removeItem('role')
   router.push('/login')
 }
 
@@ -57,7 +58,6 @@ onMounted(async () => {
     :on-select="handleSelect"
   >
     <template #headerExtra>
-      <el-button size="small" @click="router.push('/')">返回学生端</el-button>
       <el-button size="small" type="danger" plain @click="handleLogout">退出</el-button>
     </template>
 
