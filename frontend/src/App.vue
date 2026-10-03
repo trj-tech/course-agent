@@ -1,24 +1,35 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { fetchMe, fetchMySchedule, login } from './api'
+import { fetchMe, login } from './api'
+import ChatView from './components/ChatView.vue'
+import DocumentsView from './components/DocumentsView.vue'
+import PlansView from './components/PlansView.vue'
+import ScheduleView from './components/ScheduleView.vue'
 
-const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+const TABS = [
+  { key: 'chat', label: '💬 聊天' },
+  { key: 'schedule', label: '📅 课表' },
+  { key: 'documents', label: '📄 资料' },
+  { key: 'plans', label: '🎯 计划' },
+]
 
 const username = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
 const user = ref(null)
-const schedules = ref([])
+const token = ref(localStorage.getItem('token') || '')
+const activeTab = ref('chat')
 
 async function handleLogin() {
   error.value = ''
   loading.value = true
   try {
     const data = await login(username.value.trim(), password.value)
+    token.value = data.access_token
     localStorage.setItem('token', data.access_token)
     user.value = data.user
-    schedules.value = await fetchMySchedule(data.access_token)
+    activeTab.value = 'chat'
   } catch (e) {
     error.value = e.message
   } finally {
@@ -28,70 +39,26 @@ async function handleLogin() {
 
 function handleLogout() {
   localStorage.removeItem('token')
+  token.value = ''
   user.value = null
-  schedules.value = []
   username.value = ''
   password.value = ''
 }
 
-async function restoreSession() {
-  const token = localStorage.getItem('token')
-  if (!token) return
+onMounted(async () => {
+  if (!token.value) return
   try {
-    user.value = await fetchMe(token)
-    schedules.value = await fetchMySchedule(token)
+    user.value = await fetchMe(token.value)
   } catch {
-    localStorage.removeItem('token')
+    handleLogout()
   }
-}
-
-onMounted(restoreSession)
+})
 </script>
 
 <template>
   <main class="page">
-    <!-- 登录态：欢迎 + 课表 -->
-    <template v-if="user">
-      <header class="head">
-        <h1>校园课程智能助手</h1>
-        <button class="logout" @click="handleLogout">退出登录</button>
-      </header>
-      <p class="welcome">
-        你好，{{ user.name }}（{{ user.role === 'admin' ? '管理员' : '学生' }}）{{ user.student_no || '' }}
-      </p>
-
-      <section class="table-wrap">
-        <h2>我的课表（{{ schedules.length }} 门）</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>星期</th>
-              <th>节次</th>
-              <th>课程</th>
-              <th>教师</th>
-              <th>周次</th>
-              <th>教室</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="s in schedules" :key="s.id">
-              <td>{{ DAYS[s.weekday - 1] }}</td>
-              <td>{{ s.start_period }}-{{ s.end_period }}节</td>
-              <td>
-                <strong>{{ s.course_name }}</strong>
-                <span class="code">{{ s.course_code }}</span>
-              </td>
-              <td>{{ s.teacher }}</td>
-              <td>{{ s.week_start }}-{{ s.week_end }}周</td>
-              <td>{{ s.location }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
-    </template>
-
     <!-- 未登录：登录表单 -->
-    <template v-else>
+    <template v-if="!user">
       <h1>校园课程智能助手</h1>
       <p class="tagline">能查真实课表 · 能按文档作答 · 能帮你存计划</p>
       <form class="login" @submit.prevent="handleLogin">
@@ -101,40 +68,61 @@ onMounted(restoreSession)
         <button type="submit" :disabled="loading">{{ loading ? '登录中…' : '登录' }}</button>
       </form>
     </template>
+
+    <!-- 已登录：标签页布局 -->
+    <template v-else>
+      <header class="head">
+        <h1>校园课程智能助手</h1>
+        <div class="head-right">
+          <span class="who">{{ user.name }}（{{ user.role === 'admin' ? '管理员' : '学生' }}）</span>
+          <button class="logout" @click="handleLogout">退出</button>
+        </div>
+      </header>
+
+      <nav class="tabs">
+        <button
+          v-for="t in TABS"
+          :key="t.key"
+          :class="{ active: activeTab === t.key }"
+          @click="activeTab = t.key"
+        >
+          {{ t.label }}
+        </button>
+      </nav>
+
+      <section class="content">
+        <ChatView v-if="activeTab === 'chat'" :token="token" />
+        <ScheduleView v-else-if="activeTab === 'schedule'" :token="token" />
+        <DocumentsView v-else-if="activeTab === 'documents'" :token="token" />
+        <PlansView v-else :token="token" />
+      </section>
+    </template>
   </main>
 </template>
 
 <style scoped>
 .page {
-  max-width: 720px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 48px 16px;
+  padding: 28px 16px 48px;
   font-family: system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 h1 {
   text-align: center;
+  font-size: 22px;
 }
 
 .tagline {
   text-align: center;
   color: #666;
-  font-size: 15px;
-}
-
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.welcome {
-  color: #374151;
+  font-size: 14px;
+  margin-top: 6px;
 }
 
 .login {
   max-width: 320px;
-  margin: 40px auto 0;
+  margin: 48px auto 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -167,50 +155,63 @@ h1 {
   font-size: 13px;
 }
 
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.head h1 {
+  text-align: left;
+  font-size: 20px;
+}
+
+.head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.who {
+  color: #374151;
+  font-size: 14px;
+}
+
 .logout {
   border: 1px solid #d1d5db;
   background: #fff;
   border-radius: 8px;
-  padding: 6px 12px;
+  padding: 5px 12px;
   cursor: pointer;
   color: #374151;
+  font-size: 13px;
 }
 
-.table-wrap {
-  margin-top: 24px;
+.tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 16px;
 }
 
-.table-wrap h2 {
-  font-size: 16px;
-  margin-bottom: 8px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  overflow: hidden;
+.tabs button {
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
   font-size: 14px;
-}
-
-th,
-td {
-  padding: 10px 12px;
-  text-align: left;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-th {
-  background: #f9fafb;
   color: #6b7280;
-  font-weight: 500;
+  border-bottom: 2px solid transparent;
 }
 
-.code {
-  margin-left: 6px;
-  color: #9ca3af;
-  font-size: 12px;
+.tabs button.active {
+  color: #16a34a;
+  border-bottom-color: #16a34a;
+  font-weight: 600;
+}
+
+.content {
+  min-height: 420px;
 }
 </style>
