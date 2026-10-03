@@ -8,6 +8,16 @@ const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周�
 const schedules = ref([])
 const error = ref('')
 
+// 计算本周对应星期几的日期（如 09-29）
+function weekDate(weekday) {
+  const now = new Date()
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+  const d = new Date(monday)
+  d.setDate(monday.getDate() + (weekday - 1))
+  return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 onMounted(async () => {
   try {
     schedules.value = await fetchMySchedule(props.token)
@@ -25,6 +35,7 @@ onMounted(async () => {
       <thead>
         <tr>
           <th>星期</th>
+          <th>日期（本周）</th>
           <th>节次</th>
           <th>课程</th>
           <th>教师</th>
@@ -35,6 +46,7 @@ onMounted(async () => {
       <tbody>
         <tr v-for="s in schedules" :key="s.id">
           <td>{{ DAYS[s.weekday - 1] }}</td>
+          <td>{{ weekDate(s.weekday) }}</td>
           <td>{{ s.start_period }}-{{ s.end_period }}节</td>
           <td>
             <strong>{{ s.course_name }}</strong>

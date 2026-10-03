@@ -22,5 +22,8 @@ class Settings(BaseSettings):
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
 
+    # 学期第一周的周一日期（用于推算当前教学周）
+    semester_start: str = "2026-09-07"
+
 
 settings = Settings()
