@@ -1,0 +1,35 @@
+# ===== Python / FastAPI 后端 =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ===== 环境变量与密钥（严禁提交）=====
+.env
+.env.*
+!.env.example
+
+# ===== 数据文件 =====
+*.db
+*.sqlite3
+data/
+uploads/
+
+# ===== Node / Vue 前端 =====
+node_modules/
+dist/
+frontend/dist/
+
+# ===== IDE / 系统 =====
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
