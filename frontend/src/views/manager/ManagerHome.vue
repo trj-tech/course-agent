@@ -56,14 +56,12 @@ onMounted(async () => {
     </el-row>
 
     <h3 class="section">快速入口</h3>
-    <el-row :gutter="14">
-      <el-col v-for="a in quickActions" :key="a.path" :span="4" class="quick-col">
-        <el-card shadow="hover" class="quick-card" @click="router.push(a.path)">
-          <div class="quick-label">{{ a.label }}</div>
-          <div class="quick-desc">{{ a.desc }}</div>
-        </el-card>
-      </el-col>
-    </el-row>
+    <div class="quick-grid">
+      <el-card v-for="a in quickActions" :key="a.path" shadow="hover" class="quick-card" @click="router.push(a.path)">
+        <div class="quick-label">{{ a.label }}</div>
+        <div class="quick-desc">{{ a.desc }}</div>
+      </el-card>
+    </div>
 
     <h3 class="section">演示路径</h3>
     <el-card shadow="never">
@@ -112,13 +110,24 @@ h2 {
   font-size: 15px;
 }
 
-.quick-col {
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
   margin-bottom: 14px;
 }
 
 .quick-card {
   cursor: pointer;
   text-align: center;
+  height: 100%;
+}
+
+.quick-card :deep(.el-card__body) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .quick-label {
