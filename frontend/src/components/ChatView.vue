@@ -1,6 +1,8 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import {
   chatStream,
   createConversation,
@@ -42,6 +44,11 @@ const TOOL_LABELS = {
   search_course_documents: '检索课程资料',
   list_my_documents: '查询课程资料列表',
   save_study_plan: '保存学习计划',
+}
+
+// 助手回答按 Markdown 渲染（表格/加粗/列表），DOMPurify 防 XSS
+function renderMd(text) {
+  return DOMPurify.sanitize(marked.parse(text || '', { breaks: true }))
 }
 
 async function loadConversations() {
@@ -201,7 +208,7 @@ onMounted(() => {
                   <span class="source-score">相似度 {{ s.score }}</span>
                 </div>
               </div>
-              <div v-if="m.content" class="answer">{{ m.content }}</div>
+              <div v-if="m.content" class="answer md" v-html="renderMd(m.content)"></div>
               <div v-else-if="m.tools.length" class="thinking">正在组织回答…</div>
               <div v-if="m.latency_ms" class="latency">
                 <template v-if="m.first_token_ms">首字 {{ (m.first_token_ms / 1000).toFixed(1) }} 秒 · </template>总耗时 {{ (m.latency_ms / 1000).toFixed(1) }} 秒
@@ -423,6 +430,66 @@ onMounted(() => {
 
 .answer {
   margin-top: 2px;
+}
+
+/* Markdown 渲染样式：覆盖气泡的 pre-wrap，统一表格/列表观感 */
+.md {
+  white-space: normal;
+  line-height: 1.7;
+}
+
+.md :deep(p) {
+  margin: 6px 0;
+}
+
+.md :deep(p:first-child) {
+  margin-top: 0;
+}
+
+.md :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.md :deep(table) {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+  display: block;
+  overflow-x: auto;
+}
+
+.md :deep(th),
+.md :deep(td) {
+  border: 1px solid #e5e7eb;
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.md :deep(th) {
+  background: #f9fafb;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.md :deep(ul),
+.md :deep(ol) {
+  padding-left: 20px;
+  margin: 6px 0;
+}
+
+.md :deep(li) {
+  margin: 2px 0;
+}
+
+.md :deep(strong) {
+  color: #0f172a;
+}
+
+.md :deep(code) {
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
 }
 
 .thinking {
