@@ -19,8 +19,7 @@ env/
 # ===== 数据文件 =====
 *.db
 *.sqlite3
-data/
-uploads/
+data/uploads/
 
 # ===== Node / Vue 前端 =====
 node_modules/
