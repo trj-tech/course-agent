@@ -4,7 +4,7 @@ import time
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from pydantic import BaseModel
 
@@ -104,7 +104,19 @@ async def chat(payload: ChatRequest, current_user: User = Depends(get_current_us
             started: set[str] = set()
             ended: set[str] = set()
 
-            agent_input = {"messages": [HumanMessage(content=payload.message)]}
+            # 多轮记忆：取当前会话最近 20 条历史消息拼进 Agent 输入（含代词/上下文追问）
+            history_rows = (
+                db.query(AiMessage)
+                .filter(AiMessage.conversation_id == conversation.id)
+                .order_by(AiMessage.id.desc())
+                .limit(20)
+                .all()
+            )
+            history_msgs = [
+                AIMessage(content=row.content) if row.role == "assistant" else HumanMessage(content=row.content)
+                for row in reversed(history_rows)
+            ]
+            agent_input = {"messages": history_msgs + [HumanMessage(content=payload.message)]}
             async for event in agent.astream_events(agent_input, version="v2"):
                 etype = event.get("event")
                 name = event.get("name") or ""
