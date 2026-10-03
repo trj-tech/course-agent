@@ -67,10 +67,11 @@ defineOptions({ inheritAttrs: false })
   overflow: hidden;
 }
 
-/* ---------- 侧边栏 ---------- */
+/* ---------- 侧边栏（白底，参考 Ant Design 浅色菜单） ---------- */
 .aside {
-  background: #001529;
-  color: #fff;
+  background: #fff;
+  color: #1f2329;
+  border-right: 1px solid #f0f0f0;
   display: flex;
   flex-direction: column;
 }
@@ -81,17 +82,17 @@ defineOptions({ inheritAttrs: false })
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #fff;
+  color: #1f2329;
   font-weight: 600;
   font-size: 15px;
   letter-spacing: 0.5px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid #f0f0f0;
   flex-shrink: 0;
 }
 
 .logo-icon {
   display: flex;
-  color: #4fc3f7;
+  color: #1890ff;
 }
 
 .menu {
@@ -104,7 +105,7 @@ defineOptions({ inheritAttrs: false })
 .menu :deep(.el-menu-item) {
   height: 46px;
   line-height: 46px;
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(0, 0, 0, 0.65);
   margin: 2px 0;
 }
 
@@ -114,18 +115,19 @@ defineOptions({ inheritAttrs: false })
 }
 
 .menu :deep(.el-menu-item:hover) {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  background: #f5f5f5;
+  color: #1890ff;
 }
 
 .menu :deep(.el-menu-item.is-active) {
-  background: #1890ff;
-  color: #fff;
+  background: #e6f7ff;
+  color: #1890ff;
+  border-right: 3px solid #1890ff;
 }
 
 .menu :deep(.el-menu-item.is-active:hover) {
-  background: #1890ff;
-  color: #fff;
+  background: #e6f7ff;
+  color: #1890ff;
 }
 
 /* ---------- 右侧主体 ---------- */
