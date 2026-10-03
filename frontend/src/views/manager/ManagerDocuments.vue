@@ -116,11 +116,13 @@ onMounted(load)
       </el-table-column>
       <el-table-column prop="username" label="上传用户" width="110" />
       <el-table-column prop="created_at" label="创建时间" width="170" />
-      <el-table-column label="操作" width="210" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" @click="onPreview(row)">预览</el-button>
-          <el-button size="small" type="warning" @click="onReindex(row)">重新入库</el-button>
-          <el-button size="small" type="danger" @click="onDelete(row)">删除</el-button>
+          <div class="ops">
+            <el-button size="small" @click="onPreview(row)">预览</el-button>
+            <el-button size="small" type="warning" @click="onReindex(row)">重新入库</el-button>
+            <el-button size="small" type="danger" @click="onDelete(row)">删除</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -141,6 +143,10 @@ onMounted(load)
 </template>
 
 <style scoped>
+.ops {
+  white-space: nowrap;
+}
+
 .page-title {
   margin: 0;
   font-size: 17px;
