@@ -6,6 +6,13 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    name: str | None = None
+    student_no: str | None = None
+
+
 class UserOut(BaseModel):
     id: int
     username: str

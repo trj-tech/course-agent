@@ -50,3 +50,10 @@ def get_current_user(
     if user is None:
         raise credentials_exception
     return user
+
+
+def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
+    """管理后台专用依赖：仅允许 admin 角色访问。"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要管理员权限")
+    return current_user
