@@ -56,6 +56,7 @@ def _card_dict(f: Flashcard, filename: str | None) -> dict:
         "last_result": f.last_result,
         "due_date": str(f.due_date) if f.due_date else None,
         "is_due": bool(f.due_date and f.due_date <= today),
+        "can_undo": f.prev_box is not None,
     }
 
 
@@ -162,6 +163,11 @@ def review_flashcard(
         raise HTTPException(status_code=400, detail="result 仅支持 known / fuzzy / unknown")
 
     today = date.today()
+    # 存快照供撤销
+    f.prev_box = f.box
+    f.prev_due = f.due_date
+    f.prev_reviews = f.review_count
+    f.prev_result = f.last_result
     if payload.result == "known":
         f.box = min(f.box + 1, MASTER_BOX)
         f.due_date = today + timedelta(days=INTERVALS[f.box])
@@ -172,6 +178,27 @@ def review_flashcard(
         f.due_date = today
     f.review_count += 1
     f.last_result = payload.result
+    db.commit()
+    return _card_dict(f, None)
+
+
+@router.post("/{fid}/undo")
+def undo_review(
+    fid: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """撤销最近一次复习打卡：恢复到打卡前的周期 / 日期 / 次数。"""
+    f = db.get(Flashcard, fid)
+    if f is None or f.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="卡片不存在")
+    if f.prev_box is None:
+        raise HTTPException(status_code=400, detail="该卡片没有可撤销的复习记录")
+    f.box = f.prev_box
+    f.due_date = f.prev_due
+    f.review_count = f.prev_reviews or 0
+    f.last_result = f.prev_result
+    f.prev_box = f.prev_due = f.prev_reviews = f.prev_result = None
     db.commit()
     return _card_dict(f, None)
 

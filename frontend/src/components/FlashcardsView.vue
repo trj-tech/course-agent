@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { deleteFlashcard, fetchDocuments, fetchFlashcards, generateFlashcards, reviewFlashcard } from '../api'
+import { deleteFlashcard, fetchDocuments, fetchFlashcards, generateFlashcards, reviewFlashcard, undoFlashcardReview } from '../api'
 
 const props = defineProps({ token: { type: String, required: true } })
 
@@ -134,13 +134,26 @@ function dueLabel(c) {
   if (c.is_due) return '今日待复习'
   return `下次 ${c.due_date?.slice(5)}`
 }
+
+async function undo(card) {
+  try {
+    const updated = await undoFlashcardReview(props.token, card.id)
+    Object.assign(card, updated)
+    ElMessage.success('已撤销最近一次复习打卡')
+  } catch (e) {
+    ElMessage.error(e.message)
+  }
+}
 </script>
 
 <template>
   <div class="panel">
     <p v-if="error" class="error">{{ error }}</p>
     <h2>AI 复习卡片</h2>
-    <p class="tip">基于你上传的课程资料生成问答卡。按记忆规律安排复习：认识升周期（1→2→4→7→15→30 天），不会回到第 1 周期</p>
+    <p class="tip">
+      基于你上传的课程资料生成问答卡。记忆规律：连续 6 轮「认识」才升满周期成为「已掌握」
+      （1→2→4→7→15→30 天），中途「不会」会跌回第 1 周期重新累计
+    </p>
 
     <!-- 复习模式：逐张过卡 -->
     <div v-if="reviewMode && currentReviewCard" class="review-box">
@@ -237,6 +250,9 @@ function dueLabel(c) {
                   {{ boxLabel(c) }}<template v-if="dueLabel(c)"> · {{ dueLabel(c) }}</template>
                 </span>
               </div>
+              <div class="dots" :class="{ master: c.mastered }">
+                <i v-for="n in 6" :key="n" :class="{ on: n <= c.box }" />
+              </div>
               <div class="face-text">{{ c.question }}</div>
               <div v-if="c.filename" class="face-src">{{ c.filename }}</div>
             </div>
@@ -246,7 +262,10 @@ function dueLabel(c) {
               <div class="face-src">已复习 {{ c.review_count }} 次</div>
             </div>
           </div>
-          <el-button class="del" size="small" type="danger" plain @click.stop="remove(c.id)">删除</el-button>
+          <div class="card-ops">
+            <el-button v-if="c.can_undo" link size="small" @click.stop="undo(c)">撤销打卡</el-button>
+            <el-button link size="small" type="danger" @click.stop="remove(c.id)">删除</el-button>
+          </div>
         </div>
         <div v-if="!cards.length" class="empty">
           还没有卡片——选好资料后点「生成卡片」，AI 会基于你的课程资料出题
@@ -443,6 +462,27 @@ h2 {
   color: #16a34a;
 }
 
+.dots {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e5e7eb;
+}
+
+.dots i.on {
+  background: #1890ff;
+}
+
+.dots.master i.on {
+  background: #16a34a;
+}
+
 .face-text {
   flex: 1;
   font-size: 14px;
@@ -456,11 +496,16 @@ h2 {
   margin-top: 6px;
 }
 
-.del {
+.card-ops {
   position: absolute;
   right: 10px;
-  bottom: 10px;
+  bottom: 8px;
   z-index: 2;
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  padding: 0 4px;
 }
 
 .empty {

@@ -23,4 +23,9 @@ class Flashcard(Base):
     review_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # 最近一次复习结果：known / fuzzy / unknown
     last_result: Mapped[str | None] = mapped_column(String(10))
+    # 上次复习前的快照（用于撤销打卡）
+    prev_box: Mapped[int | None] = mapped_column(Integer)
+    prev_due: Mapped[date | None] = mapped_column(Date)
+    prev_reviews: Mapped[int | None] = mapped_column(Integer)
+    prev_result: Mapped[str | None] = mapped_column(String(10))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

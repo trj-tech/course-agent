@@ -105,6 +105,13 @@ export function reviewFlashcard(token, id, result) {
   })
 }
 
+export function undoFlashcardReview(token, id) {
+  return request(`/api/flashcards/${id}/undo`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
 export async function uploadDocument(token, file) {
   const form = new FormData()
   form.append('file', file)
