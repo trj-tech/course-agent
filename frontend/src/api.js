@@ -242,6 +242,103 @@ export function previewAdminDocument(token, id) {
   return request(`/api/admin/documents/${id}/preview`, { headers: adminHeaders(token) })
 }
 
+// ---------- 作业 / 成绩 / 统计 ----------
+
+export function fetchMyAssignments(token) {
+  return request('/api/assignments', { headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function setAssignmentStatus(token, id, status) {
+  return request(`/api/assignments/${id}/status`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ status }),
+  })
+}
+
+export function fetchMyScores(token) {
+  return request('/api/scores/me', { headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function fetchMyStats(token) {
+  return request('/api/stats/me', { headers: { Authorization: `Bearer ${token}` } })
+}
+
+// ---------- 复习卡片 ----------
+
+export function fetchFlashcards(token) {
+  return request('/api/flashcards', { headers: { Authorization: `Bearer ${token}` } })
+}
+
+export function generateFlashcards(token, payload) {
+  return request('/api/flashcards/generate', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deleteFlashcard(token, id) {
+  return request(`/api/flashcards/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+// ---------- 管理端：作业 / 成绩 ----------
+
+export function fetchAdminAssignments(token, params = {}) {
+  const qs = new URLSearchParams()
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== '' && v !== null && v !== undefined) qs.set(k, v)
+  })
+  return request(`/api/admin/assignments?${qs.toString()}`, { headers: adminHeaders(token) })
+}
+
+export function createAdminAssignment(token, data) {
+  return request('/api/admin/assignments', {
+    method: 'POST',
+    headers: adminHeaders(token),
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateAdminAssignment(token, id, data) {
+  return request(`/api/admin/assignments/${id}`, {
+    method: 'PUT',
+    headers: adminHeaders(token),
+    body: JSON.stringify(data),
+  })
+}
+
+export function deleteAdminAssignment(token, id) {
+  return request(`/api/admin/assignments/${id}`, {
+    method: 'DELETE',
+    headers: adminHeaders(token),
+  })
+}
+
+export function fetchAdminScores(token, username = '') {
+  return request(`/api/admin/scores?username=${encodeURIComponent(username)}`, {
+    headers: adminHeaders(token),
+  })
+}
+
+export function createAdminScore(token, data) {
+  return request('/api/admin/scores', {
+    method: 'POST',
+    headers: adminHeaders(token),
+    body: JSON.stringify(data),
+  })
+}
+
+export function deleteAdminScore(token, id) {
+  return request(`/api/admin/scores/${id}`, {
+    method: 'DELETE',
+    headers: adminHeaders(token),
+  })
+}
+
 /** 流式聊天：POST /api/chat 并以 SSE 方式读取，逐条回调 onEvent({type,...}) */
 export async function chatStream(message, token, onEvent, conversationId = null) {
   const res = await fetch('/api/chat', {

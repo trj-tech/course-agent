@@ -1,7 +1,16 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { HomeFilled, ChatDotRound, FolderOpened, Reading, Calendar, User } from '@element-plus/icons-vue'
+import {
+  HomeFilled,
+  ChatDotRound,
+  FolderOpened,
+  Reading,
+  Calendar,
+  EditPen,
+  Ticket,
+  User,
+} from '@element-plus/icons-vue'
 import { fetchMe } from '../../api'
 import AppLayout from '../../components/AppLayout.vue'
 
@@ -15,6 +24,8 @@ const MENUS = [
   { index: '/manager/documents', label: '文档管理', icon: FolderOpened },
   { index: '/manager/courses', label: '课程管理', icon: Reading },
   { index: '/manager/schedules', label: '课表管理', icon: Calendar },
+  { index: '/manager/assignments', label: '作业管理', icon: EditPen },
+  { index: '/manager/scores', label: '成绩管理', icon: Ticket },
   { index: '/manager/users', label: '用户管理', icon: User },
 ]
 

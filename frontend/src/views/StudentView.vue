@@ -1,7 +1,16 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChatDotRound, Calendar, FolderOpened, Notebook } from '@element-plus/icons-vue'
+import {
+  ChatDotRound,
+  Calendar,
+  Collection,
+  DataAnalysis,
+  EditPen,
+  FolderOpened,
+  Notebook,
+  Ticket,
+} from '@element-plus/icons-vue'
 import { fetchMe } from '../api'
 import AppLayout from '../components/AppLayout.vue'
 
@@ -11,9 +20,13 @@ const user = ref(null)
 
 const MENUS = [
   { index: '/chat', label: '课程助手', icon: ChatDotRound },
+  { index: '/dashboard', label: '学习数据', icon: DataAnalysis },
   { index: '/schedule', label: '我的课表', icon: Calendar },
+  { index: '/assignments', label: '作业/DDL', icon: EditPen },
   { index: '/documents', label: '课程资料', icon: FolderOpened },
+  { index: '/flashcards', label: '复习卡片', icon: Collection },
   { index: '/plans', label: '学习计划', icon: Notebook },
+  { index: '/scores', label: '成绩绩点', icon: Ticket },
 ]
 
 function handleLogout() {

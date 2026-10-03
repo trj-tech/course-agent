@@ -16,6 +16,8 @@ const entries = [
   { key: 'schedules', label: '课表记录', color: '#f56c6c' },
   { key: 'documents', label: '知识库文档', color: '#909399' },
   { key: 'plans', label: '学习计划', color: '#9b59b6' },
+  { key: 'assignments', label: '作业', color: '#f0662e' },
+  { key: 'scores', label: '成绩记录', color: '#3498db' },
   { key: 'conversations', label: 'AI 会话', color: '#00bcd4' },
   { key: 'messages', label: 'AI 消息', color: '#ff9800' },
 ]
